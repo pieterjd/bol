@@ -1,0 +1,43 @@
+// Sign your request with HMAC SHA-256, see documentation for more info on this
+// works
+/**
+$date the date in "D, d F Y H:i:s \G\M\T" format see date() from php.net
+$http_method: GET or POST
+$url: the part after the servername, eg /openapi/services/rest/catalog/v3/searchresults
+$conten_type: the contenttype for the request, eg application/xml
+$query_params: parameters for the query, formed by the url, eg ?term=potter&offset=0&nrProducts=8&includeProducts=true&includeCategories=true&includeRefinements=false&categoryId=0
+*/
+function bol_get_signature($date, $http_method, $url, $content_type, $query_params) {  
+  $signature = $http_method . "\n\n";
+  $signature .= $content_type . "\n";
+  $signature .= $date."\n";
+  $signature .= "x-openapi-date:" . $date . "\n";
+  /*
+  if(!is_null($sessionId)) {
+    $signature .= "x-openapi-session-id:" . $sessionId . "\n";
+  } 
+  */
+  $signature .= $url."\n";    
+
+  if($query_params != "") {
+    $parametersArray = explode("&", $query_params);
+    if(count($parametersArray) > 0) {
+      $parametersArray[0] = substr($parametersArray[0], 1, strlen($parametersArray[0]));
+    }
+    sort($parametersArray);
+
+    $arrayLength = count($parametersArray);
+    for ($i = 0; $i < $arrayLength; $i++) {
+      if($i < $arrayLength-1) {
+       $signature .= "&".urldecode($parametersArray[$i])."\n";
+      }
+      else {
+        $signature .= "&".urldecode($parametersArray[$i]);
+      }
+    }
+  }  
+// Place your keys here                
+  $public_key = BOL_ACCESS_KEY;
+  $private_key = BOL_SECRET_KEY;
+  return $public_key . ':' . base64_encode(hash_hmac('SHA256', $signature, $private_key, true));  
+}

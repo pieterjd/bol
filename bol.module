@@ -1,0 +1,172 @@
+<?php
+define('BOL_SERVER','openapi.bol.com');
+define('BOL_SERVER_PORT','443');
+
+define('BOL_ACCESS_KEY','84750D81353E44EA8067032345AAEFBB');
+define('BOL_SECRET_KEY','8E8454EA1251E822AC7024A89B1DFF694949198524E26F9498B245F296E01AF1BEF92EA7F0D33C47D108A4350B68587D443866A1CA41B4B28D3E76721E455F0C07609CC0C32354761B34C292D43AD0204281628F2D377FC3ABE2F7E5CE21B9338DAACD6D4E656D767B26262C5EFB042355A89E07866719D19BC1CA6CAE02BDB8');
+
+define('BOL_NO_IMAGE','http://www.bol.com/nl/static/images/main/noimage_124x100default.gif');
+/**
+* Returns an array of product xml.
+* @param string $keyword keywords to look for
+* @param int $offset he number of results to skip before returning any results. This can be used for paging purposes. E.g. offset 3 will skip the first 3 results
+* @return an array with the following keys
+* * total_result_size: the number of hits
+* * results: sub-array with xml responses
+
+*/
+function bol_search($keyword='',$offset=0){
+  $result = NULL;
+  $response = bol_doRequest('GET','/openapi/services/rest/catalog/v3/searchresults','?term='.urlencode($keyword).'&offset='.$offset.'&nrProducts=8&includeProducts=true&includeCategories=true&includeRefinements=false&categoryId=0','',null);
+  //dsm('response: '.$response);
+  if(substr_count($response, "200 OK") > 0){
+    $result = array();
+    
+    
+    // Strip unneeded stuff from the xml respons
+  	$xml =  strstr($response, '<?xml');  
+    // Simplexml magic
+    
+  	$xml = simplexml_load_string($xml);
+  	//add the nr of results
+    //explicit casting to int is required; otherwise simplexml crap output
+  	$result['total_result_size'] = (int)$xml->TotalResultSize;
+  	//add the results sub-array
+  	$result['results'] = array();
+  	
+  	foreach($xml->Product as $product){
+  	  //dsm($product->Id);
+  	  //dsm("Id:".$product->{"Id"});
+  	  //dsm("id:".$product->{"id"});
+  	  $result['results'][] = $product;
+  	}
+  }
+  else{
+    //some kind of error
+    drupal_set_message('Some kind of error when retrieving bol results.','error');
+  }
+  return $result;
+}
+/**
+implements hook_theme().
+*/
+
+function bol_theme(){
+  $theme['bol_item'] = array(
+    'variables' => array('item' => array()),
+    'template' => 'bol-item',
+  
+  );
+  return $theme;
+}
+/**
+* Implements hook_init().
+*/
+function bol_init() {
+  drupal_add_css(drupal_get_path('module', 'bol') . '/bol.css');
+}
+/**
+ * template_preprocess: bol_item.
+ */
+function template_preprocess_bol_item(&$variables) {
+  $item = $variables['item'];
+  $variables['test'] = "testing the new template";
+  $variables['bol_id'] = $item->{"Id"};
+  $variables['bol_title'] = $item->{"Title"};
+  $variables['bol_short_description'] = $item->{"ShortDescription"};
+  $variables['bol_thumbnailurl'] = $item->{"Images"}->{"Large"};
+  $variables['bol_url'] = $item->{"Urls"}->{"Main"};
+  $variables['bol_rating'] = $item->{"Rating"}.'/50';
+  $variables['bol_rating_percentage'] = ((double)$variables['bol_rating'])*2.0 .'%';
+  $variables['bol_section'] = $item->{"Section"};
+  $variables['bol_releasedate'] = $item->{"ReleaseDate"};
+  //convert Y-m-dP to Y-m-dP timestamp
+  $variables['bol_releasedate_timestamp'] = date_create_from_format('Y-m-dP',$item->{"ReleaseDate"})->getTimestamp();
+  $variables['bol_ean'] = $item->{"Ean"};
+  $variables['bol_type'] = $item->{"Type"};
+  //$variables['bol_'] = $item->{""};
+  //$variables['bol_'] = $item->{""};
+}
+/**
+Helper function to sign a request.
+ Sign your request with HMAC SHA-256, see documentation for more info on this
+*/
+function bol_getSignature($date, $httpMethod, $url, $contentType, $queryParams) {  
+		$signature = $httpMethod . "\n\n";
+		$signature .= $contentType . "\n";
+		$signature .= $date."\n";
+		$signature .= "x-openapi-date:" . $date . "\n";
+		/*
+		if(!is_null($sessionId)) {
+			$signature .= "x-openapi-session-id:" . $sessionId . "\n";
+		} 
+		*/
+		$signature .= $url."\n";    
+   
+		if($queryParams != "") {
+			$parametersArray = explode("&", $queryParams);
+			if(count($parametersArray) > 0) {
+				$parametersArray[0] = substr($parametersArray[0], 1, strlen($parametersArray[0]));
+			}
+			sort($parametersArray);
+
+			$arrayLength = count($parametersArray);
+			for ($i = 0; $i < $arrayLength; $i++) {
+				if($i < $arrayLength-1) {
+					$signature .= "&".urldecode($parametersArray[$i])."\n";
+				} else {
+					$signature .= "&".urldecode($parametersArray[$i]);
+				}
+			}
+		}  
+// Place your keys here		
+  $publicKey = '84750D81353E44EA8067032345AAEFBB';
+  $privateKey = '8E8454EA1251E822AC7024A89B1DFF694949198524E26F9498B245F296E01AF1BEF92EA7F0D33C47D108A4350B68587D443866A1CA41B4B28D3E76721E455F0C07609CC0C32354761B34C292D43AD0204281628F2D377FC3ABE2F7E5CE21B9338DAACD6D4E656D767B26262C5EFB042355A89E07866719D19BC1CA6CAE02BDB8';
+		return $publicKey . ':' . base64_encode(hash_hmac('SHA256', $signature, $privateKey, true));  
+	}	
+/**
+Helper function: do a request to the Bol.com API.
+*/
+function bol_doRequest($method, $url, $parameters, $content, $sessionId) {
+
+  $server = BOL_SERVER;
+  $port = BOL_SERVER_PORT;		
+		
+  $today = gmdate('D, d F Y H:i:s \G\M\T');
+  
+		if($method == 'GET') {
+			$contentType =	'application/xml';
+		} elseif ($method == 'POST') {
+			$contentType =	'application/x-www-form-urlencoded';
+		}
+  $signature=bol_getSignature($today, $method, $url, $contentType, $parameters);
+  //echo "BolDemo: date $today<br/>method: $method<br/>url: $url<br/>contentType: $contentType<br/>params: $parameters<br/>signature: $signature<br/>";
+	$headers = $method . " " . $url . $parameters . " HTTP/1.0\r\nContent-type: " . $contentType . "\r\n";
+	$headers .= "Host: " . $server . "\r\n";
+	$headers .= "Content-length: " . strlen($content) . "\r\n";
+	$headers .= "Connection: close\r\n";
+	$headers .= "X-OpenAPI-Authorization: " . $signature . "\r\n";
+	$headers .= "X-OpenAPI-Date: " . $today . "\r\n";
+	if(!is_null($sessionId)) {
+	$headers .= "X-OpenAPI-Session-ID: " . $sessionId . "\r\n";
+	}
+	$headers .= "\r\n";
+  //echo "BolHeaders: $headers<br/>";
+// Connect using fsockopen (you could also try CURL)		
+	$socket = fsockopen('ssl://'.$server, $port, $errno, $errstr, 30);
+		if (!$socket) {
+			echo "$errstr ($errno)<br />\n";
+		}
+		fputs($socket, $headers);
+		fputs($socket, $content);
+		$ret = "";
+
+		while (!feof($socket)) {
+		$readLine = fgets($socket);
+		$ret .= $readLine;
+	}
+	fclose($socket);
+
+	//return strtolower($ret);
+	return $ret;
+  }

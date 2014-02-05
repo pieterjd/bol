@@ -1,0 +1,23 @@
+
+span.productName {
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.container{
+  overflow: hidden;
+}
+
+.foto{
+  float:left;
+  width: 30%;
+}
+
+.info{
+  float:left;
+  width: 70%;
+}
+
+.info .inner{
+  margin-left: 20px;
+}

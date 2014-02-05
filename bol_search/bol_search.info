@@ -1,0 +1,11 @@
+
+name = Bol Search
+description = Search Bol.com products.
+package = Bol
+dependencies[] = bol
+core = 7.x
+php = 5.2
+;configure = admin/config/services/amazon
+
+
+

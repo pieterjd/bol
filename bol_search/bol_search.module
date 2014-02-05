@@ -1,0 +1,41 @@
+<?php
+/**
+* implements hook_search_info().
+*/
+function bol_search_search_info(){
+  $info = array();
+  $info['title'] = t('bol.com');
+  return $info;
+}
+
+/**
+* Implements hook_search_execute().
+* Do not forget to enable this search in the site configuration page!
+*/
+function bol_search_search_execute($keys = NULL, $conditions = NULL){
+  //initialize the pager
+  // returns current page of pager; first page is 0
+  $current_page = pager_find_page();
+  //do the search
+  $bol_items = bol_search($keys,$offset = 10*$current_page);
+  
+  $hits = array();
+  foreach($bol_items['results'] as $item){
+    //dsm($item);
+    //$user_comments = drupal_http_request($item['customerreviews_iframe']);
+    $hits[] = array(
+      'link' =>   $item->{"Urls"}->{"Main"},
+      'title' => $item->{"Title"},
+      //'snippet' => $user_comments->data,
+      //'snippet' => $item['publicationyear'],
+      'snippet' => theme('bol_item', 
+        array(
+          'item' => $item,
+        )
+      ),
+    );
+  }
+  
+  return $hits;
+
+}

@@ -33,6 +33,7 @@ function bol_search_search_execute($keys = NULL, $conditions = NULL){
           'item' => $item,
         )
       ),
+      'extra' => $item->{"Ean"},
     );
   }
   

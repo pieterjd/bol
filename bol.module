@@ -6,6 +6,69 @@ define('BOL_ACCESS_KEY','84750D81353E44EA8067032345AAEFBB');
 define('BOL_SECRET_KEY','8E8454EA1251E822AC7024A89B1DFF694949198524E26F9498B245F296E01AF1BEF92EA7F0D33C47D108A4350B68587D443866A1CA41B4B28D3E76721E455F0C07609CC0C32354761B34C292D43AD0204281628F2D377FC3ABE2F7E5CE21B9338DAACD6D4E656D767B26262C5EFB042355A89E07866719D19BC1CA6CAE02BDB8');
 
 define('BOL_NO_IMAGE','http://www.bol.com/nl/static/images/main/noimage_124x100default.gif');
+
+/**
+* implements hook_menu().
+*/
+function bol_menu(){
+  $menu['bol/%/save'] = array(
+    'title' => 'Save bol item callback',
+    'type' => MENU_CALLBACK,
+    'page callback' => 'bol_save',
+    'page arguments' => array(1),
+    'access callback' => TRUE,
+    
+  );
+  return $menu;
+}
+
+/**
+* Retrieves a bol.com item and stores it in the local node database.
+* @param string $bol_id the bol.com id of the item to store locally
+*/
+
+function bol_save($bol_id){
+  //dsm('about to save '. $bol_id);
+  $bol_items = bol_search("$bol_id");
+  //dsm($bol_items);
+  if(isset($bol_items['results'])){
+    //found matching item
+    $item = $bol_items['results'][0];
+    //dsm($item);
+    //dsm($item->{"Ean"});
+    
+    $node = new stdClass();
+    $node->type = 'article';
+    //Prepares a node object for editing
+    node_object_prepare($node);
+    $node->language = LANGUAGE_NONE;
+    $node->title = $item->{"Title"};
+    //setting the body value
+    $body = check_plain($item->{"LongDescription"});
+    $body .= theme('bol_item', 
+      array(
+        'item' => $item,
+      )
+    );
+    //dsm($body);
+    $node->body[$node->language][0]['value']   = $body;
+    $node->body[$node->language][0]['summary'] = text_summary($item->{"ShortDescription"});
+    $node->body[$node->language][0]['format']  = 'filtered_html';
+    $node->uid = 0;
+    $node->created = strtotime("now");
+    $node->changed = strtotime("now");
+    $node->status = 1;
+    $node->comment = 0;
+    $node->promote = 0;
+    $node->moderate = 0;
+    $node->sticky = 0;
+    node_save($node);
+    //dsm('saved node');
+    //dsm($node->nid);
+    
+  }
+  return 'about to save '. $bol_id;
+}
 /**
 * Returns an array of product xml.
 * @param string $keyword keywords to look for

@@ -19,6 +19,7 @@
       <h4>Rating: <?php print $bol_rating;  ?> | <?php print $bol_rating_percentage;  ?></h4>
       <h4>Type: <?php print $bol_type;  ?> </h4>
       <h4>Release: <?php print $bol_releasedate;  ?> </h4>
+      <h4>Ean: <?php print $bol_ean;  ?> </h4>
     </div>
   </div>
   

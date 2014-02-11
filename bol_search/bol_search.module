@@ -23,6 +23,10 @@ function bol_search_search_execute($keys = NULL, $conditions = NULL){
   foreach($bol_items['results'] as $item){
     //dsm($item);
     //$user_comments = drupal_http_request($item['customerreviews_iframe']);
+    
+    //ajax link
+     drupal_add_library('system', 'drupal.ajax');
+    $link = l(t('Click here'), 'bol/'.$item->{"Ean"}.'/save', array('attributes' => array('class' => array('use-ajax'))));
     $hits[] = array(
       'link' =>   $item->{"Urls"}->{"Main"},
       'title' => $item->{"Title"},
@@ -33,8 +37,17 @@ function bol_search_search_execute($keys = NULL, $conditions = NULL){
           'item' => $item,
         )
       ),
-      'extra' => $item->{"Ean"},
+      'extra' => array(
+        //link to save locally
+        '<div id="link-'.$item->{"Ean"}.'">'.$link.'</div>',
+        //div for response of ajax save
+        '<div id="wrapper-'.$item->{"Ean"}.'"></div>',
+      ),
+      
+      
     );
+    
+    
   }
   
   return $hits;

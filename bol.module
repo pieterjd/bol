@@ -12,7 +12,7 @@ define('BOL_NO_IMAGE','http://www.bol.com/nl/static/images/main/noimage_124x100d
 */
 function bol_menu(){
   $menu['bol/%/save'] = array(
-    'title' => 'Save bol item callback',
+    //'title' => 'Save bol item callback',
     'type' => MENU_CALLBACK,
     'page callback' => 'bol_save',
     'page arguments' => array(1),
@@ -65,9 +65,17 @@ function bol_save($bol_id){
     node_save($node);
     //dsm('saved node');
     //dsm($node->nid);
-    
+    //create ajaxcommands cf https://api.drupal.org/api/examples/ajax_example%21ajax_example_misc.inc/function/ajax_link_response/7
+    // this id comes from the bol_search module
+    $commands[] = ajax_command_append('#wrapper-'.$bol_id, t('Stored locally'));
+    $page = array(
+      '#type' => 'ajax',
+      '#commands' => $commands,
+    );
+    ajax_deliver($page);
   }
-  return 'about to save '. $bol_id;
+  //no return required with ajax
+  //return 'Saved '. $item->{"Title"};
 }
 /**
 * Returns an array of product xml.

@@ -78,6 +78,8 @@ function bol_save($bol_id){
       //save failed, display message
       drupal_set_message(t('The image could not be stored'), 'error');
     }
+    //add the product code
+    $node->item_code[$node->language][0]['value'] = $item->{"Ean"};
     node_save($node);
     //dsm('saved node');
     //dsm($node->nid);

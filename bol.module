@@ -21,7 +21,9 @@ function bol_menu(){
   );
   return $menu;
 }
-
+function bol_form_alter(&$form, &$form_state, $form_id){
+  //dsm($form);
+}
 /**
 * Retrieves a bol.com item and stores it in the local node database.
 * @param string $bol_id the bol.com id of the item to store locally
@@ -38,13 +40,13 @@ function bol_save($bol_id){
     //dsm($item->{"Ean"});
     
     $node = new stdClass();
-    $node->type = 'article';
+    $node->type = 'item';
     //Prepares a node object for editing
     node_object_prepare($node);
     $node->language = LANGUAGE_NONE;
     $node->title = $item->{"Title"};
     //setting the body value
-    $body = check_plain($item->{"LongDescription"});
+    $body = drupal_html_to_text(check_plain($item->{"LongDescription"}));
     $body .= theme('bol_item', 
       array(
         'item' => $item,
@@ -62,6 +64,20 @@ function bol_save($bol_id){
     $node->promote = 0;
     $node->moderate = 0;
     $node->sticky = 0;
+    if($node->type == 'item'){
+      // if item add product url
+      $node->item_source_link[$node->language][0]['url'] = $item->{"Urls"}->{"Main"};
+    }
+    //add the product image
+    //first get it and store it locally
+    $image_file = system_retrieve_file($item->{"Images"}->{"Large"}, NULL, TRUE);
+    if($image_file){
+      $node->item_image[$node->language][0]['fid'] = $image_file->fid;
+    }
+    else{
+      //save failed, display message
+      drupal_set_message(t('The image could not be stored'), 'error');
+    }
     node_save($node);
     //dsm('saved node');
     //dsm($node->nid);
@@ -152,7 +168,9 @@ function template_preprocess_bol_item(&$variables) {
   $variables['bol_section'] = $item->{"Section"};
   $variables['bol_releasedate'] = $item->{"ReleaseDate"};
   //convert Y-m-dP to Y-m-dP timestamp
-  $variables['bol_releasedate_timestamp'] = date_create_from_format('Y-m-dP',$item->{"ReleaseDate"})->getTimestamp();
+  if(date_create_from_format('Y-m-dP',$item->{"ReleaseDate"})){
+    $variables['bol_releasedate_timestamp'] = date_create_from_format('Y-m-dP',$item->{"ReleaseDate"})->getTimestamp();
+  }
   $variables['bol_ean'] = $item->{"Ean"};
   $variables['bol_type'] = $item->{"Type"};
   //$variables['bol_'] = $item->{""};
